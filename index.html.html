@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Нұржан Маркет жүйесі</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 2rem;
+      color: #dc2626;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      border: 1px solid #dc2626;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: white;
+    }
+
+    .tab.active {
+      background-color: #dc2626;
+      color: white;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    .card.selected {
+      border: 2px solid #dc2626;
+    }
+
+    .card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+
+    .input, input, select {
+      padding: 8px;
+      width: 100%;
+      margin-top: 5px;
+      margin-bottom: 10px;
+    }
+
+    .button {
+      background-color: #dc2626;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background-color: #b91c1c;
+    }
+
+    .card-output {
+      background: white;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .history-log {
+      font-size: 0.95rem;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="title">Нұржан Маркет жүйесі</div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('list')">🛒 Өнімдер</div>
+      <div class="tab" onclick="switchTab('add')">➕ Қосу</div>
+      <div class="tab" onclick="switchTab('remove')">🗑️ Өшіру</div>
+      <div class="tab" onclick="switchTab('history')">📄 Тарих</div>
+    </div>
+
+    <!-- Өнім тізімі -->
+    <div class="section active" id="section-list">
+      <div class="products" id="productList"></div>
+
+      <div class="card-output">
+        <label>Салмағы (кг):</label>
+        <input type="number" id="weightInput" min="0" step="0.01" />
+        <button class="button" onclick="calculatePrice()">Бағасын есептеу</button>
+      </div>
+
+      <div id="receipt" class="card-output" style="display:none;"></div>
+    </div>
+
+    <!-- Қосу -->
+    <div class="section" id="section-add">
+      <div class="card-output">
+        <h3>Жаңа өнім қосу</h3>
+        <input type="text" id="newName" placeholder="Өнім атауы" />
+        <input type="number" id="newPrice" placeholder="Бағасы (тг/кг)" />
+        <input type="text" id="newImage" placeholder="Сурет жолы (/images/...)"/>
+        <button class="button" onclick="addProduct()">Өнімді қосу</button>
+      </div>
+    </div>
+
+    <!-- Өшіру -->
+    <div class="section" id="section-remove">
+      <div class="card-output">
+        <h3>Өнімді өшіру</h3>
+        <select id="deleteSelect"></select>
+        <button class="button" onclick="removeProduct()">Өшіру</button>
+      </div>
+    </div>
+
+    <!-- Тарих -->
+    <div class="section" id="section-history">
+      <div class="history-log" id="historyLog">
+        <p>Әзірге тарих жоқ.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let products = [
+      { name: "Алма", pricePerKg: 499, image: "/images/apple.jpg" },
+      { name: "Банан", pricePerKg: 689, image: "/images/banana.jpg" },
+      { name: "Картоп", pricePerKg: 189, image: "/images/potato.jpg" },
+      { name: "Қияр", pricePerKg: 420, image: "/images/cucumber.jpg" },
+      { name: "Пияз", pricePerKg: 130, image: "/images/onion.jpg" },
+      { name: "Помидор", pricePerKg: 550, image: "/images/tomato.jpg" },
+      { name: "Мандарин", pricePerKg: 799, image: "/images/mandarin.jpg" },
+      { name: "Бұрыш (балгарский)", pricePerKg: 720, image: "/images/pepper.jpg" },
+    ];
+
+    let selectedProduct = products[0];
+    let history = [];
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+      document.getElementById(`section-${tab}`).classList.add('active');
+
+      if (tab === 'remove') updateDeleteDropdown();
+      if (tab === 'history') updateHistory();
+    }
+
+    function renderProducts() {
+      const productList = document.getElementById('productList');
+      productList.innerHTML = '';
+      products.forEach(product => {
+        const card = document.createElement('div');
+        card.className = 'card' + (selectedProduct.name === product.name ? ' selected' : '');
+        card.innerHTML = `
+          <img src="${product.image}" alt="${product.name}" />
+          <h2>${product.name}</h2>
+          <p>${product.pricePerKg} тг / кг</p>
+        `;
+        card.onclick = () => {
+          selectedProduct = product;
+          renderProducts();
+        };
+        productList.appendChild(card);
+      });
+    }
+
+    function calculatePrice() {
+      const weight = parseFloat(document.getElementById('weightInput').value);
+      if (isNaN(weight) || weight <= 0) return;
+      const total = (weight * selectedProduct.pricePerKg).toFixed(2);
+      const now = new Date();
+      const date = now.toLocaleDateString('kk-KZ');
+      const time = now.toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' });
+
+      document.getElementById('receipt').style.display = 'block';
+      document.getElementById('receipt').innerHTML = `
+        <h2 style="color:#dc2626;">Этикетка</h2>
+        <p>🛒 Өнім: <strong>${selectedProduct.name}</strong></p>
+        <p>⚖️ Салмақ: <strong>${weight} кг</strong></p>
+        <p>💰 Бағасы: <strong>${selectedProduct.pricePerKg} тг/кг</strong></p>
+        <p>🔢 Жалпы: <strong>${total} тг</strong></p>
+        <p style="font-size:0.9rem; color:gray;">${date} ${time}</p>
+      `;
+
+      history.push(`✅ ${selectedProduct.name} - ${weight} кг = ${total} тг (${date} ${time})`);
+    }
+
+    function addProduct() {
+      const name = document.getElementById('newName').value;
+      const price = parseFloat(document.getElementById('newPrice').value);
+      const image = document.getElementById('newImage').value;
+      if (name && !isNaN(price) && image) {
+        products.push({ name, pricePerKg: price, image });
+        history.push(`➕ Қосылды: ${name} (${price} тг/кг)`);
+        renderProducts();
+        alert("Өнім қосылды!");
+        document.getElementById('newName').value = '';
+        document.getElementById('newPrice').value = '';
+        document.getElementById('newImage').value = '';
+      }
+    }
+
+    function updateDeleteDropdown() {
+      const select = document.getElementById('deleteSelect');
+      select.innerHTML = '';
+      products.forEach((product, i) => {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = product.name;
+        select.appendChild(option);
+      });
+    }
+
+    function removeProduct() {
+      const index = document.getElementById('deleteSelect').value;
+      if (products[index]) {
+        const removed = products.splice(index, 1)[0];
+        history.push(`🗑️ Өшірілді: ${removed.name}`);
+        renderProducts();
+        updateDeleteDropdown();
+        alert("Өнім өшірілді!");
+      }
+    }
+
+    function updateHistory() {
+      const log = document.getElementById('historyLog');
+      if (history.length === 0) {
+        log.innerHTML = "<p>Тарих бос.</p>";
+      } else {
+        log.innerHTML = history.map(item => `<p>${item}</p>`).join('');
+      }
+    }
+
+    renderProducts();
+  </script>
+</body>
+</html>
